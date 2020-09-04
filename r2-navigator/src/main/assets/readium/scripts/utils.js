@@ -64,6 +64,20 @@ var scrollToId = function(id) {
     document.scrollingElement.scrollLeft = snapOffset(offset);
 };
 
+var scrollToAnchor = function(id) {
+    console.log("scrollToAnchor " + id);
+    var element = document.getElementById(id);
+    var screenWidth = window.innerWidth;
+    var elementScreenOffset = element.getBoundingClientRect().left;
+
+    if (window.scrollX % screenWidth === 0 && (elementScreenOffset >= 0 && elementScreenOffset <= screenWidth)) {
+      return;
+    }
+
+    var pagesToShift = Math.floor(elementScreenOffset / screenWidth) + 1;
+    document.scrollingElement.scrollLeft = window.scrollX - (window.scrollX % screenWidth) + (pagesToShift * screenWidth);
+};
+
 // Position must be in the range [0 - 1], 0-100%.
 var scrollToPosition = function(position) {
     console.log("ScrollToPosition " + position);

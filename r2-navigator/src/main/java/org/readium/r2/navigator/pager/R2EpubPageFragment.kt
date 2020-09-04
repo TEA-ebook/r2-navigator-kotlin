@@ -144,8 +144,8 @@ class R2EpubPageFragment : Fragment() {
 
                     // TODO this seems to be needed, will need to test more
                     if (url!!.indexOf("#") > 0) {
-                        val id = url.substring(url.indexOf('#'))
-                        webView.loadUrl("javascript:scrollAnchor($id);")
+                        val id = url.substring(url.indexOf('#') + 1)
+                        webView.loadUrl("javascript:scrollToAnchor('$id');")
                         locations = Locator.Locations(fragments = listOf(id))
                     }
 
