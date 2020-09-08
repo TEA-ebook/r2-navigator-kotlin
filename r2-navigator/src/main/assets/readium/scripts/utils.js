@@ -16,7 +16,36 @@ var ticking = false;
 var update = function(position) {
     let positionString = position.toString()
     Android.progressionDidChange(positionString);
+    getCfi();
 };
+
+var getCfi = debounce(function() {
+    Android.cfiDidChange(getFirstVisiblePartialCfi(getFrameRect()));
+}, 50);
+
+function debounce(func, wait, immediate) {
+    var timeout;
+    return function() {
+        var context = this, args = arguments;
+        var later = function() {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        var callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+}
+
+function getFrameRect() {
+  return {
+     left: 0,
+     right: window.innerWidth,
+     top: 0,
+     bottom: window.innerHeight
+  };
+}
 
 function isScrollModeEnabled() {
     return document.documentElement.style.getPropertyValue("--USER__scroll").toString().trim() == 'readium-scroll-on';
@@ -57,6 +86,7 @@ var scrollToPage = function(page) {
 
 // Scroll to the given TagId in document and snap.
 var scrollToId = function(id) {
+    console.log("scrollToId " + id);
     var element = document.getElementById(id);
     var elementOffset = element.scrollLeft // element.getBoundingClientRect().left works for Gutenbergs books
     var offset = Math.round(window.scrollX + elementOffset);
@@ -243,7 +273,6 @@ var scrollRightRTL = function() {
 // Snap the offset to the screen width (page width).
 var snapOffset = function(offset) {
     var value = offset + 1;
-
     return value - (value % window.innerWidth);
 };
 

@@ -40,11 +40,12 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
     lateinit var navigator: Navigator
 
     var progression: Double = 0.0
+    var cfi: String? = null
     var overrideUrlLoading = true
     var resourceUrl: String? = null
 
     var scrollMode: Boolean = false
-      private set
+        private set
 
     var callback: OnOverScrolledCallback? = null
 
@@ -124,6 +125,12 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
     }
 
     @android.webkit.JavascriptInterface
+    fun cfiDidChange(partialCfi: String) {
+        cfi = partialCfi
+        listener.onProgressionChanged(progression)
+    }
+
+    @android.webkit.JavascriptInterface
     fun centerTapped() {
         uiScope.launch {
             listener.onTap(PointF((this@R2BasicWebView.width / 2).toFloat(), (this@R2BasicWebView.height / 2).toFloat()))
@@ -153,9 +160,9 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
 
                     // Initialize a new instance of popup window
                     val mPopupWindow = PopupWindow(
-                        customView,
-                        ListPopupWindow.WRAP_CONTENT,
-                        ListPopupWindow.WRAP_CONTENT
+                            customView,
+                            ListPopupWindow.WRAP_CONTENT,
+                            ListPopupWindow.WRAP_CONTENT
                     )
                     mPopupWindow.isOutsideTouchable = true
                     mPopupWindow.isFocusable = true
