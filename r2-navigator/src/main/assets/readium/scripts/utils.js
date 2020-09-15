@@ -97,6 +97,11 @@ var scrollToId = function(id) {
 var scrollToAnchor = function(id) {
     console.log("scrollToAnchor " + id);
     var element = document.getElementById(id);
+    scrollToElement(element);
+};
+
+var scrollToElement = function(element, textPosition) {
+    console.log("ScrollToElement " + element.tagName + (textPosition ? (" (offset: " + textPosition + ")") : ""));
     var screenWidth = window.innerWidth;
     var elementScreenOffset = element.getBoundingClientRect().left;
 
@@ -119,6 +124,16 @@ var scrollToPosition = function(position) {
 
     document.scrollingElement.scrollLeft = snapOffset(offset);
     update(position);
+};
+
+var scrollToPartialCfi = function(partialCfi) {
+    console.log("ScrollToPartialCfi " + partialCfi);
+    var epubCfi = new EpubCFI("epubcfi(/6/2!" + partialCfi + ")");
+    var element = document.querySelector(epubCfi.generateHtmlQuery());
+    if (element) {
+      var textPosition = parseInt(EpubCFI.getCharacterOffsetComponent(partialCfi), 10);
+      scrollToElement(element, textPosition);
+    }
 };
 
 var scrollToEnd = function() {
