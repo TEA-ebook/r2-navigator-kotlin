@@ -150,13 +150,13 @@ class R2EpubPageFragment : Fragment() {
                     }
 
                     if (locations != null && locations.fragments.isEmpty()) {
+                        locations["partialCfi"]?.let { partialCfi ->
+                            webView.loadUrl("javascript:scrollToPartialCfi('$partialCfi');")
+                        }
                         locations.progression?.let { progression ->
                             currentFragment.webView.progression = progression
 
-                            val partialCfi = locations["partialCfi"]
-                            if (partialCfi != null) {
-                                webView.loadUrl("javascript:scrollToPartialCfi('$partialCfi');")
-                            } else if (webView.scrollMode) {
+                            if (webView.scrollMode) {
                                 currentFragment.webView.scrollToPosition(progression)
                             } else {
                                 // FIXME: We need a better way to wait, because if the value is too low it fails

@@ -102,16 +102,47 @@ var scrollToAnchor = function(id) {
 
 var scrollToElement = function(element, textPosition) {
     console.log("ScrollToElement " + element.tagName + (textPosition ? (" (offset: " + textPosition + ")") : ""));
-    var screenWidth = window.innerWidth;
-    var elementScreenOffset = element.getBoundingClientRect().left;
+    var windowWidth = window.innerWidth;
+    var elementScreenLeftOffset = element.getBoundingClientRect().left;
 
-    if (window.scrollX % screenWidth === 0 && (elementScreenOffset >= 0 && elementScreenOffset <= screenWidth)) {
+    if (window.scrollX % windowWidth === 0 && (elementScreenLeftOffset >= 0 && elementScreenLeftOffset <= windowWidth)) {
       return;
     }
 
-    var pagesToShift = Math.floor(elementScreenOffset / screenWidth) + 1;
-    document.scrollingElement.scrollLeft = window.scrollX - (window.scrollX % screenWidth) + (pagesToShift * screenWidth);
+    var page = getPageForElement(element, elementScreenLeftOffset, textPosition);
+    document.scrollingElement.scrollLeft = page * windowWidth;
 };
+
+function getPageForElement(element, elementScreenLeftOffset, textOffset) {
+    if (!textOffset) {
+      return Math.ceil((window.scrollX + elementScreenLeftOffset) / window.innerWidth) - 1;
+    }
+
+    const position = textOffset / element.textContent.length;
+    const rects = Array.from(element.getClientRects()).map(function (rect) {
+        return {
+            rect,
+            offset: Math.floor(rect.left / window.innerWidth),
+            surface: rect.width * rect.height
+        }
+    });
+    const textTotalSurface = rects.reduce(function (total, current) { return total + current.surface; }, 0);
+
+    const rectToDisplay = rects.map(function(rect, index) {
+        if (index === 0) {
+            rect.start = 0;
+            rect.end = rect.surface / textTotalSurface;
+        } else {
+            rect.start = rects[index - 1].end;
+            rect.end = rect.start + (rect.surface / textTotalSurface);
+        }
+        return rect;
+    }).find(function (rect) {
+        return position >= rect.start && position < rect.end;
+    });
+
+    return rectToDisplay ? rectToDisplay.offset : 0;
+}
 
 // Position must be in the range [0 - 1], 0-100%.
 var scrollToPosition = function(position) {
