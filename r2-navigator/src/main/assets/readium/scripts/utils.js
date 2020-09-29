@@ -16,7 +16,36 @@ var ticking = false;
 var update = function(position) {
     let positionString = position.toString()
     Android.progressionDidChange(positionString);
+    getCfi();
 };
+
+var getCfi = debounce(function() {
+    Android.cfiDidChange(getFirstVisiblePartialCfi(getFrameRect()));
+}, 50);
+
+function debounce(func, wait, immediate) {
+    var timeout;
+    return function() {
+        var context = this, args = arguments;
+        var later = function() {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        var callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+}
+
+function getFrameRect() {
+  return {
+     left: 0,
+     right: window.innerWidth,
+     top: 0,
+     bottom: window.innerHeight
+  };
+}
 
 function isScrollModeEnabled() {
     return document.documentElement.style.getPropertyValue("--USER__scroll").toString().trim() == 'readium-scroll-on';
@@ -57,6 +86,7 @@ var scrollToPage = function(page) {
 
 // Scroll to the given TagId in document and snap.
 var scrollToId = function(id) {
+    console.log("scrollToId " + id);
     var element = document.getElementById(id);
     var elementOffset = element.scrollLeft // element.getBoundingClientRect().left works for Gutenbergs books
     var offset = Math.round(window.scrollX + elementOffset);
@@ -67,16 +97,52 @@ var scrollToId = function(id) {
 var scrollToAnchor = function(id) {
     console.log("scrollToAnchor " + id);
     var element = document.getElementById(id);
-    var screenWidth = window.innerWidth;
-    var elementScreenOffset = element.getBoundingClientRect().left;
+    scrollToElement(element);
+};
 
-    if (window.scrollX % screenWidth === 0 && (elementScreenOffset >= 0 && elementScreenOffset <= screenWidth)) {
+var scrollToElement = function(element, textPosition) {
+    console.log("ScrollToElement " + element.tagName + (textPosition ? (" (offset: " + textPosition + ")") : ""));
+    var windowWidth = window.innerWidth;
+    var elementScreenLeftOffset = element.getBoundingClientRect().left;
+
+    if (window.scrollX % windowWidth === 0 && (elementScreenLeftOffset >= 0 && elementScreenLeftOffset <= windowWidth)) {
       return;
     }
 
-    var pagesToShift = Math.floor(elementScreenOffset / screenWidth) + 1;
-    document.scrollingElement.scrollLeft = window.scrollX - (window.scrollX % screenWidth) + (pagesToShift * screenWidth);
+    var page = getPageForElement(element, elementScreenLeftOffset, textPosition);
+    document.scrollingElement.scrollLeft = page * windowWidth;
 };
+
+function getPageForElement(element, elementScreenLeftOffset, textOffset) {
+    if (!textOffset) {
+      return Math.ceil((window.scrollX + elementScreenLeftOffset) / window.innerWidth) - 1;
+    }
+
+    const position = textOffset / element.textContent.length;
+    const rects = Array.from(element.getClientRects()).map(function (rect) {
+        return {
+            rect,
+            offset: Math.floor(rect.left / window.innerWidth),
+            surface: rect.width * rect.height
+        }
+    });
+    const textTotalSurface = rects.reduce(function (total, current) { return total + current.surface; }, 0);
+
+    const rectToDisplay = rects.map(function(rect, index) {
+        if (index === 0) {
+            rect.start = 0;
+            rect.end = rect.surface / textTotalSurface;
+        } else {
+            rect.start = rects[index - 1].end;
+            rect.end = rect.start + (rect.surface / textTotalSurface);
+        }
+        return rect;
+    }).find(function (rect) {
+        return position >= rect.start && position < rect.end;
+    });
+
+    return rectToDisplay ? rectToDisplay.offset : 0;
+}
 
 // Position must be in the range [0 - 1], 0-100%.
 var scrollToPosition = function(position) {
@@ -89,6 +155,16 @@ var scrollToPosition = function(position) {
 
     document.scrollingElement.scrollLeft = snapOffset(offset);
     update(position);
+};
+
+var scrollToPartialCfi = function(partialCfi) {
+    console.log("ScrollToPartialCfi " + partialCfi);
+    var epubCfi = new EpubCFI("epubcfi(/6/2!" + partialCfi + ")");
+    var element = document.querySelector(epubCfi.generateHtmlQuery());
+    if (element) {
+      var textPosition = parseInt(EpubCFI.getCharacterOffsetComponent(partialCfi), 10);
+      scrollToElement(element, textPosition);
+    }
 };
 
 var scrollToEnd = function() {
@@ -243,7 +319,6 @@ var scrollRightRTL = function() {
 // Snap the offset to the screen width (page width).
 var snapOffset = function(offset) {
     var value = offset + 1;
-
     return value - (value % window.innerWidth);
 };
 

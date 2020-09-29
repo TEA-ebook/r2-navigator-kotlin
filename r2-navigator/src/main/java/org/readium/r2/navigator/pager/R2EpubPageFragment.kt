@@ -150,6 +150,9 @@ class R2EpubPageFragment : Fragment() {
                     }
 
                     if (locations != null && locations.fragments.isEmpty()) {
+                        locations["partialCfi"]?.let { partialCfi ->
+                            webView.loadUrl("javascript:scrollToPartialCfi('$partialCfi');")
+                        }
                         locations.progression?.let { progression ->
                             currentFragment.webView.progression = progression
 

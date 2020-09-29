@@ -392,8 +392,9 @@ class EpubNavigatorFragment(
             val positions = publication.positionsByResource[resource.href]
                     ?: return@launch
             val positionIndex = ceil(progression * (positions.size - 1)).toInt()
-            val locator = positions[positionIndex]
-                    .copyWithLocations(progression = progression)
+            val partialCfi = currentFragment?.webView?.cfi
+            val otherLocations = if (partialCfi != null) mapOf("partialCfi" to partialCfi as Any) else emptyMap()
+            val locator = positions[positionIndex].copyWithLocations(progression = progression, otherLocations = otherLocations)
 
             if (locator == currentLocator.value) {
                 return@launch
