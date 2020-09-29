@@ -164,6 +164,8 @@ var scrollToPartialCfi = function(partialCfi) {
     if (element) {
       var textPosition = parseInt(EpubCFI.getCharacterOffsetComponent(partialCfi), 10);
       scrollToElement(element, textPosition);
+    } else {
+      console.log("Partial CFI element was not found");
     }
 };
 
