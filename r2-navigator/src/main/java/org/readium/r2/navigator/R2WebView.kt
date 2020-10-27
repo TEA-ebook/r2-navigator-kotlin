@@ -722,7 +722,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                 scrollToItem(mCurItem, true, 0, false)
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                val index = ev.actionIndex
+                val index = 0
                 val x = ev.getX(index)
                 mLastMotionX = x
                 mActivePointerId = ev.getPointerId(index)
