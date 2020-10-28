@@ -10,6 +10,7 @@
 package org.readium.r2.navigator
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.*
@@ -716,7 +717,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                 val totalDeltaY = (y - mInitialMotionY).toInt()
                 val nextPage = determineTargetPage(currentPage, 0f, initialVelocity, totalDelta)
                 
-                val scrollMode = listener.preferences.getBoolean(SCROLL_REF, false)
+                val scrollMode = preferences?.getBoolean(SCROLL_REF, false) ?: false
                 if (scrollMode) {
                     if (abs(totalDeltaY) < 200) {
                         if (mInitialMotionX < x) {
