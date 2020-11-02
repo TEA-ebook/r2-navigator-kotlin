@@ -10,21 +10,27 @@
 package org.readium.r2.navigator.pager
 
 import android.graphics.BitmapFactory
+import android.graphics.PointF
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.readium.r2.navigator.R
+import org.readium.r2.navigator.R2BasicWebView
+import org.readium.r2.navigator.image.ImageNavigatorFragment
 import org.readium.r2.shared.publication.Link
 import org.readium.r2.shared.publication.Publication
 import kotlin.coroutines.CoroutineContext
 
 
-class R2CbzPageFragment(private val publication: Publication)
+class R2CbzPageFragment(
+        private val publication: Publication,
+        private val listener: ImageNavigatorFragment.Listener? = null)
     : androidx.fragment.app.Fragment(), CoroutineScope  {
 
     override val coroutineContext: CoroutineContext
@@ -37,6 +43,21 @@ class R2CbzPageFragment(private val publication: Publication)
 
         val view = inflater.inflate(R.layout.viewpager_fragment_cbz, container, false)
         val imageView = view.findViewById<ImageView>(R.id.imageView)
+
+        val centerButton: Button = view.findViewById<View>(R.id.toggle) as Button
+        centerButton.setOnClickListener {
+            listener?.onTap(PointF((view.width / 2).toFloat(), (view.height / 2).toFloat()))
+        }
+
+        val leftButton: Button = view.findViewById<View>(R.id.left) as Button
+        leftButton.setOnClickListener {
+            listener?.onTap(PointF(1f, (view.height / 2).toFloat()))
+        }
+
+        val rightButton: Button = view.findViewById<View>(R.id.right) as Button
+        rightButton.setOnClickListener {
+            listener?.onTap(PointF((view.width - 1).toFloat(), (view.height / 2).toFloat()))
+        }
 
        launch {
            publication.get(link)

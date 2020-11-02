@@ -8,10 +8,12 @@ package org.readium.r2.navigator.image
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.PointF
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentFactory
@@ -37,9 +39,9 @@ import org.readium.r2.shared.publication.services.positions
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ImageNavigatorFragment private constructor(
-    override val publication: Publication,
-    private val initialLocator: Locator? = null,
-    internal val listener: Listener? = null
+        override val publication: Publication,
+        private val initialLocator: Locator? = null,
+        internal val listener: Listener? = null
 ) : Fragment(), CoroutineScope by MainScope(), VisualNavigator {
 
     interface Listener : VisualNavigator.Listener
@@ -53,9 +55,9 @@ class ImageNavigatorFragment private constructor(
      * @param listener Optional listener to implement to observe events, such as user taps.
      */
     class Factory(
-        private val publication: Publication,
-        private val initialLocator: Locator? = null,
-        private val listener: Listener? = null
+            private val publication: Publication,
+            private val initialLocator: Locator? = null,
+            private val listener: Listener? = null
     ) : FragmentFactory() {
 
         override fun instantiate(classLoader: ClassLoader, className: String): Fragment {
@@ -64,7 +66,7 @@ class ImageNavigatorFragment private constructor(
                     ImageNavigatorFragment(publication, initialLocator, listener)
 
                 R2CbzPageFragment::class.java.name ->
-                    R2CbzPageFragment(publication)
+                    R2CbzPageFragment(publication, listener)
 
                 else -> super.instantiate(classLoader, className)
             }
@@ -77,7 +79,7 @@ class ImageNavigatorFragment private constructor(
     }
 
     internal lateinit var positions: List<Locator>
-    internal lateinit var resourcePager: R2ViewPager
+    lateinit var resourcePager: R2ViewPager
 
     internal lateinit var preferences: SharedPreferences
 
@@ -85,7 +87,8 @@ class ImageNavigatorFragment private constructor(
     private lateinit var currentActivity: FragmentActivity
 
     override val currentLocator: StateFlow<Locator> get() = _currentLocator
-    private val _currentLocator = MutableStateFlow(initialLocator ?: publication.readingOrder.first().toLocator())
+    private val _currentLocator = MutableStateFlow(initialLocator
+            ?: publication.readingOrder.first().toLocator())
 
     internal var currentPagerPosition: Int = 0
     internal var resources: List<String> = emptyList()
@@ -143,6 +146,10 @@ class ImageNavigatorFragment private constructor(
 
     fun previousResource(v: View?) {
         goBackward()
+    }
+
+    fun onTap(point: PointF): Boolean {
+        return (this.listener as VisualNavigator.Listener).onTap(point)
     }
 
     private fun notifyCurrentLocation() {

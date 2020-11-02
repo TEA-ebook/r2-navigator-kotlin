@@ -13,6 +13,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.PointF
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -91,8 +92,10 @@ open class R2CbzActivity : AppCompatActivity(), CoroutineScope, IR2Activity, Vis
     override fun onCreate(savedInstanceState: Bundle?) {
         preferences = getSharedPreferences("org.readium.r2.settings", Context.MODE_PRIVATE)
 
-        publicationPath = intent.getStringExtra("publicationPath") ?: throw Exception("publicationPath required")
-        publicationFileName = intent.getStringExtra("publicationFileName") ?: throw Exception("publicationFileName required")
+        publicationPath = intent.getStringExtra("publicationPath")
+                ?: throw Exception("publicationPath required")
+        publicationFileName = intent.getStringExtra("publicationFileName")
+                ?: throw Exception("publicationFileName required")
         publication = intent.getPublication(this)
 
         publicationIdentifier = publication.metadata.identifier ?: publication.metadata.title
@@ -147,8 +150,14 @@ open class R2CbzActivity : AppCompatActivity(), CoroutineScope, IR2Activity, Vis
         }
     }
 
-    override fun toggleActionBar(v: View?) {
-        toggleActionBar()
+    override fun onTap(point: PointF): Boolean {
+        val view = navigatorFragment.view ?: return false
+        when {
+            point.x < 0.2 * view.width -> previousResource(view)
+            point.x > 0.8 * view.width -> nextResource(view)
+            else -> toggleActionBar()
+        }
+        return super.onTap(point)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
