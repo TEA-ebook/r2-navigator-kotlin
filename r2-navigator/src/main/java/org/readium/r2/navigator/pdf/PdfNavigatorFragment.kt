@@ -40,7 +40,7 @@ import timber.log.Timber
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfNavigatorFragment internal constructor(
-    private val publication: Publication,
+    override val publication: Publication,
     private val initialLocator: Locator? = null,
     private val listener: Listener? = null
 ) : Fragment(), VisualNavigator {
@@ -116,7 +116,7 @@ class PdfNavigatorFragment internal constructor(
                         // Customization of [PDFView] is done before setting the listeners,
                         // to avoid overriding them in reading apps, which would break the
                         // navigator.
-                        .also { (listener as? Listener)?.onConfigurePdfView(it) }
+                        .also { listener?.onConfigurePdfView(it) }
                         .defaultPage(page)
                         .onRender { _, _, _ ->
                             pdfView.fitToWidth()
