@@ -10,7 +10,6 @@
 package org.readium.r2.navigator
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.*
@@ -156,10 +155,22 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
      * Determines speed during touch scrolling
      */
     private var mVelocityTracker: VelocityTracker? = null
+    /** Initial velocity of the current movement. */
+    private var mInitialVelocity: Int? = null
     private var mMinimumVelocity: Int = 0
     private var mMaximumVelocity: Int = 0
     private var mFlingDistance: Int = 0
     private var mCloseEnough: Int = 0
+    private var mHasAbortedScroller: Boolean = false
+
+    /**
+     * Returns the current velocity of the active pointer.
+     */
+    private fun getCurrentXVelocity(): Int? {
+        val tracker = mVelocityTracker ?: return null
+        tracker.computeCurrentVelocity(1000, mMaximumVelocity.toFloat())
+        return tracker.getXVelocity(mActivePointerId).toInt()
+    }
 
     // If the pager is at least this close to its final position, complete the scroll
     // on touch down and let the user interact with the content inside instead of
@@ -309,7 +320,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
 
     fun calculateCurrentItem() {
         val currentPage = numPages * progression
-        mCurItem = abs(currentPage).roundToInt()
+        mCurItem = currentPage.roundToInt()
     }
 
     private fun setCurrentItemInternal(item: Int, smoothScroll: Boolean, always: Boolean) {
@@ -330,6 +341,8 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
 
     private fun scrollToItem(item: Int, smoothScroll: Boolean, velocity: Int, post: Boolean) {
         val destX = (this.getClientWidth() * item)
+//        val width = this.computeHorizontalScrollExtent()
+//        val destX = (width * item)
         if (smoothScroll) {
             smoothScrollTo(destX, 0, velocity)
         } else {
@@ -436,7 +449,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
     private fun recomputeScrollPosition(width: Int, oldWidth: Int, margin: Int, oldMargin: Int) {
         if (oldWidth > 0 /*&& !mItems.isEmpty()*/) {
             if (!mScroller!!.isFinished) {
-                val currentPage = scrollX / getClientWidth()
+                val currentPage = (scrollX / getClientWidth().toDouble()).roundToInt()
 
                 mScroller!!.finalX = (currentPage * getClientWidth())
             } else {
@@ -659,14 +672,16 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
         if (mVelocityTracker == null) {
             mVelocityTracker = VelocityTracker.obtain()
         }
-        mVelocityTracker!!.addMovement(ev)
+        mVelocityTracker?.addMovement(ev)
 
         val action = ev.action
         when (action and MotionEvent.ACTION_MASK) {
 
             MotionEvent.ACTION_DOWN -> {
-
-                mScroller!!.abortAnimation()
+                mScroller?.let { scroller ->
+                    mHasAbortedScroller = !scroller.isFinished
+                    scroller.abortAnimation()
+                }
 
                 // Remember where the motion event started
                 mInitialMotionX = ev.x
@@ -676,13 +691,13 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                 mActivePointerId = ev.getPointerId(0)
             }
             MotionEvent.ACTION_MOVE -> {
-
                 if ((mLastMotionX > (width - mGutterSize)) || (mLastMotionX < mGutterSize)) {
                     requestDisallowInterceptTouchEvent(true)
                     return false
                 }
 
                 if (!mIsBeingDragged) {
+                    mInitialVelocity = getCurrentXVelocity()
                     val pointerIndex = ev.findPointerIndex(mActivePointerId)
                     val x = ev.getX(pointerIndex)
                     val xDiff = abs(x - mLastMotionX)
@@ -703,44 +718,54 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                     }
                 }
             }
-            MotionEvent.ACTION_UP -> if (mIsBeingDragged) {
-                mIsBeingDragged = false
-                val velocityTracker = mVelocityTracker
-                velocityTracker!!.computeCurrentVelocity(2000, mMaximumVelocity.toFloat())
-                val initialVelocity = velocityTracker.getXVelocity(mActivePointerId).toInt()
+            MotionEvent.ACTION_UP -> when {
+                mIsBeingDragged -> {
+                    mIsBeingDragged = false
+                    mHasAbortedScroller = false
 
-                val currentPage = scrollX / getClientWidth()
-                val activePointerIndex = ev.findPointerIndex(mActivePointerId)
-                val x = ev.getX(activePointerIndex)
-                val y = ev.getY(activePointerIndex)
-                val totalDelta = (x - mInitialMotionX).toInt()
-                val totalDeltaY = (y - mInitialMotionY).toInt()
-                val nextPage = determineTargetPage(currentPage, 0f, initialVelocity, totalDelta)
-                
-                val scrollMode = preferences?.getBoolean(SCROLL_REF, false) ?: false
-                if (scrollMode) {
-                    if (abs(totalDeltaY) < 200) {
-                        if (mInitialMotionX < x) {
-                            // Log.d(TAG, "Left to Right swipe performed");
-                            if (DEBUG) Timber.tag(this::class.java.simpleName).d("onTouchEvent scrollLeft")
-                            scrollLeft(animated = true)
-                        } else if (mInitialMotionX > x) {
-                            // Log.d(TAG, "Right to Left swipe performed");
-                            if (DEBUG) Timber.tag(this::class.java.simpleName).d("onTouchEvent scrollRight")
-                            scrollRight(animated = true)
+                    val activePointerIndex = ev.findPointerIndex(mActivePointerId)
+                    val x = ev.getX(activePointerIndex)
+                    val y = ev.getY(activePointerIndex)
+
+                    val scrollMode = preferences?.getBoolean(SCROLL_REF, false) ?: false
+                    if (scrollMode) {
+                        val totalDelta = (y - mInitialMotionY).toInt()
+                        if (abs(totalDelta) < 200) {
+                            if (mInitialMotionX < x) {
+                                scrollLeft(animated = true)
+                            } else if (mInitialMotionX > x) {
+                                scrollRight(animated = true)
+                            }
+                        }
+                    } else {
+                        val velocity = getCurrentXVelocity() ?: 0
+                        val totalDelta = (x - mInitialMotionX).toInt()
+                        val targetPage = determineTargetPage(
+                            currentPage = mCurItem,
+                            initialVelocity = mInitialVelocity ?: 0,
+                            currentVelocity = velocity,
+                            deltaX = totalDelta
+                        )
+
+                        when {
+                            targetPage < 0 -> {
+                                scrollLeft(animated = true)
+                            }
+                            targetPage >= numPages -> {
+                                scrollRight(animated = true)
+                            }
+                            else -> {
+                                setCurrentItemInternal(targetPage, true, velocity)
+                            }
                         }
                     }
-                } else {
-                    if (nextPage == currentPage && nextPage == 0 && scrollX == 0) {
-                        if (DEBUG) Timber.tag(this::class.java.simpleName).d("onTouchEvent scrollLeft")
-                        scrollLeft(animated = true)
-                    } else if (nextPage == numPages) {
-                        if (DEBUG) Timber.tag(this::class.java.simpleName).d("onTouchEvent scrollRight")
-                        scrollRight(animated = true)
-                    } else {
-                        if (DEBUG) Timber.tag(this::class.java.simpleName).d("onTouchEvent setCurrentItemInternal")
-                        setCurrentItemInternal(nextPage, true, initialVelocity)
-                    }
+                }
+                // The gesture was made while a smooth scrolling was animating. If no dragging
+                // occurred, we continue the smooth scrolling where we left off.
+                mHasAbortedScroller -> {
+                    mHasAbortedScroller = false
+                    val velocity = getCurrentXVelocity() ?: 0
+                    setCurrentItemInternal(mCurItem, true, velocity)
                 }
             }
 
@@ -748,7 +773,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                 scrollToItem(mCurItem, true, 0, false)
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                val index = 0
+                val index = 0 // we put 0 to avoid pinching shift issue
                 val x = ev.getX(index)
                 mLastMotionX = x
                 mActivePointerId = ev.getPointerId(index)
@@ -813,12 +838,16 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
         return lastItem
     }
 
-    private fun determineTargetPage(currentPage: Int, pageOffset: Float, velocity: Int, deltaX: Int): Int {
-        return if (abs(deltaX) > mFlingDistance && abs(velocity) > mMinimumVelocity) {
-            if (velocity > 0) currentPage else currentPage + 1
+    private fun determineTargetPage(currentPage: Int, initialVelocity: Int, currentVelocity: Int, deltaX: Int): Int {
+        // If the initialVelocity and currentVelocity don't have the same sign, it means the user
+        // reversed the drag direction. In which case we consider this as a cancellation.
+        val isCancelled = (initialVelocity * currentVelocity) <= 0
+
+        return if (!isCancelled && abs(deltaX) > mFlingDistance && abs(currentVelocity) > mMinimumVelocity) {
+            if (currentVelocity >= 0) currentPage - 1
+            else currentPage + 1
         } else {
-            val truncator = if (currentPage >= mCurItem) 0.4f else 0.6f
-            currentPage + (pageOffset + truncator).toInt()
+            currentPage
         }
     }
 
@@ -832,9 +861,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
             val newPointerIndex = if (pointerIndex == 0) 1 else 0
             mLastMotionX = ev.getX(newPointerIndex)
             mActivePointerId = ev.getPointerId(newPointerIndex)
-            if (mVelocityTracker != null) {
-                mVelocityTracker!!.clear()
-            }
+            mVelocityTracker?.clear()
         }
     }
 
@@ -1013,7 +1040,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
         get() {
             var numPages = 0
             try {
-                numPages = this.computeHorizontalScrollRange() / this.computeHorizontalScrollExtent()
+                numPages = (this.computeHorizontalScrollRange() / this.computeHorizontalScrollExtent().toDouble()).roundToInt()
             } catch (e: Exception) {
             } finally {
                 if (numPages == 0) {

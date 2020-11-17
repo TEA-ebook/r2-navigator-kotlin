@@ -1,3 +1,4 @@
+
 var readium = (function() {
     // Catch JS errors to log them in the app.
     window.addEventListener("error", function(event) {
@@ -86,6 +87,7 @@ var readium = (function() {
 
     // Scroll to the given TagId in document and snap.
     function scrollToId(id) {
+//        Android.log("scrollToId " + id);
         var element = document.getElementById(id);
         if (!element) {
             return;
@@ -135,7 +137,7 @@ var readium = (function() {
           var textPosition = parseInt(EpubCFI.getCharacterOffsetComponent(partialCfi), 10);
           scrollToElement(element, textPosition);
         } else {
-//        Android.log("Partial CFI element was not found");
+        Android.log("Partial CFI element was not found");
         }
     }
 
@@ -173,6 +175,7 @@ var readium = (function() {
         var documentWidth = document.scrollingElement.scrollWidth;
         var offset = window.scrollX + pageWidth;
         var maxOffset = isRTL() ? 0 : (documentWidth - pageWidth);
+//        Android.log("scrollRight ", {offset, maxOffset});
         return scrollToOffset(Math.min(offset, maxOffset));
     }
 
@@ -259,17 +262,18 @@ var readium = (function() {
 
     /// Toolkit
 
-    function debounce(delay, func) {
+    function debounce(func, wait, immediate) {
         var timeout;
         return function() {
-            var self = this;
-            var args = arguments;
-            function callback() {
-                func.apply(self, args);
+            var context = this, args = arguments;
+            var later = function() {
                 timeout = null;
-            }
+                if (!immediate) func.apply(context, args);
+            };
+            var callNow = immediate && !timeout;
             clearTimeout(timeout);
-            timeout = setTimeout(callback, delay);
+            timeout = setTimeout(later, wait);
+            if (callNow) func.apply(context, args);
         };
     }
 

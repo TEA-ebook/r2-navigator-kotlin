@@ -85,8 +85,9 @@ class R2EpubPageFragment : Fragment() {
         var endReached = false
         webView.setOnOverScrolledCallback(object : R2BasicWebView.OnOverScrolledCallback {
             override fun onOverScrolled(scrollX: Int, scrollY: Int, clampedX: Boolean, clampedY: Boolean) {
+                val activity = activity ?: return
                 val metrics = DisplayMetrics()
-                requireActivity().windowManager.defaultDisplay.getMetrics(metrics)
+                activity.windowManager.defaultDisplay.getMetrics(metrics)
 
 
                 val topDecile = webView.contentHeight - 1.15 * metrics.heightPixels
@@ -145,17 +146,20 @@ class R2EpubPageFragment : Fragment() {
                     var locations = epubNavigator.pendingLocator?.locations
                     epubNavigator.pendingLocator = null
 
+                    val currentWebView = currentFragment.webView
+
                     // TODO this seems to be needed, will need to test more
                     if (url!!.indexOf("#") > 0) {
                         val id = url.substring(url.indexOf('#') + 1)
-                        webView.loadUrl("javascript:scrollToAnchor('$id');")
+                        webView.loadUrl("javascript:readium.scrollToId('$id');")
                         locations = Locator.Locations(fragments = listOf(id))
+                        recomputeCurrentItem(currentWebView)
                     }
 
-                    val currentWebView = currentFragment.webView
                     if (currentWebView != null && locations != null && locations.fragments.isEmpty()) {
                         locations["partialCfi"]?.let { partialCfi ->
-                            webView.loadUrl("javascript:scrollToPartialCfi('$partialCfi');")
+                            webView.loadUrl("javascript:readium.scrollToPartialCfi('$partialCfi');")
+                            recomputeCurrentItem(currentWebView)
                         }
 
                         locations.progression?.let { progression ->
@@ -164,20 +168,28 @@ class R2EpubPageFragment : Fragment() {
                             if (webView.scrollMode) {
                                 currentWebView.scrollToPosition(progression)
                             } else {
-                                // FIXME: We need a better way to wait, because if the value is too low it fails
-                                (object : CountDownTimer(200, 1) {
-                                    override fun onTick(millisUntilFinished: Long) {}
-                                    override fun onFinish() {
-                                        currentWebView.calculateCurrentItem()
-                                        currentWebView.setCurrentItem(currentWebView.mCurItem, false)
-                                    }
-                                }).start()
+                                recomputeCurrentItem(currentWebView)
                             }
                         }
                     }
 
                 }
                 webView.listener.onPageLoaded()
+            }
+
+            private fun recomputeCurrentItem(currentWebView: R2WebView?) {
+                if (currentWebView == null) {
+                    return
+                }
+
+                // FIXME: We need a better way to wait, because if the value is too low it fails
+                (object : CountDownTimer(200, 1) {
+                    override fun onTick(millisUntilFinished: Long) {}
+                    override fun onFinish() {
+                        currentWebView.calculateCurrentItem()
+                        currentWebView.setCurrentItem(currentWebView.mCurItem, false)
+                    }
+                }).start()
             }
 
             // prevent favicon.ico to be loaded, this was causing NullPointerException in NanoHttp
