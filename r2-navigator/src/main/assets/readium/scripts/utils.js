@@ -1,3 +1,8 @@
+/*
+ * Copyright 2020 Readium Foundation. All rights reserved.
+ * Use of this source code is governed by the BSD-style license
+ * available in the top-level LICENSE file of the project.
+ */
 
 var readium = (function() {
     // Catch JS errors to log them in the app.
@@ -17,41 +22,12 @@ var readium = (function() {
         orientationChanged();
     }, false);
 
-    var last_known_scrollX_position = 0;
-    var last_known_scrollY_position = 0;
-    var ticking = false;
     var maxScreenX = 0;
     var pageWidth = 1;
 
     var getCfi = debounce(function() {
         Android.cfiDidChange(getFirstVisiblePartialCfi(getFrameRect()));
     }, 50);
-
-    // Position in range [0 - 1].
-    function update(position) {
-        let positionString = position.toString();
-        Android.progressionDidChange(positionString);
-        getCfi();
-    }
-
-    window.addEventListener('scroll', function(e) {
-        last_known_scrollY_position = window.scrollY / document.scrollingElement.scrollHeight;
-        // Using Math.abs because for RTL books, the value will be negative.
-        last_known_scrollX_position = Math.abs(window.scrollX / document.scrollingElement.scrollWidth);
-
-        // Window is hidden
-        if (document.scrollingElement.scrollWidth === 0 || document.scrollingElement.scrollHeight === 0) {
-            return;
-        }
-
-        if (!ticking) {
-            window.requestAnimationFrame(function() {
-                update(isScrollModeEnabled() ? last_known_scrollY_position : last_known_scrollX_position);
-                ticking = false;
-            });
-        }
-        ticking = true;
-    });
 
     function orientationChanged() {
         maxScreenX = (window.orientation === 0 || window.orientation == 180) ? screen.width : screen.height;
@@ -277,9 +253,7 @@ var readium = (function() {
         };
     }
 
-
     // Public API used by the navigator.
-
     return {
         'scrollToId': scrollToId,
         'scrollToPosition': scrollToPosition,
@@ -289,8 +263,7 @@ var readium = (function() {
         'scrollToStart': scrollToStart,
         'scrollToEnd': scrollToEnd,
         'setProperty': setProperty,
-        'removeProperty': removeProperty,
-        'onViewportWidthChanged': onViewportWidthChanged
+        'removeProperty': removeProperty
     };
 
 })();

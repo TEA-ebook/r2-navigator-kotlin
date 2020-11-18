@@ -12,7 +12,6 @@ package org.readium.r2.navigator.pager
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.util.Base64
 import android.util.DisplayMetrics
 import android.view.KeyEvent
@@ -23,7 +22,9 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewClientCompat
+import kotlinx.coroutines.delay
 import org.readium.r2.navigator.R
 import org.readium.r2.navigator.R2BasicWebView
 import org.readium.r2.navigator.R2WebView
@@ -31,8 +32,10 @@ import org.readium.r2.navigator.epub.EpubNavigatorFragment
 import org.readium.r2.navigator.extensions.htmlId
 import org.readium.r2.shared.SCROLL_REF
 import org.readium.r2.shared.publication.Locator
+import org.readium.r2.shared.publication.ReadingProgression
 import java.io.IOException
 import java.io.InputStream
+import kotlin.math.roundToInt
 
 class R2EpubPageFragment : Fragment() {
 
@@ -41,8 +44,6 @@ class R2EpubPageFragment : Fragment() {
 
     var webView: R2WebView? = null
         private set
-
-    internal lateinit var listener: R2BasicWebView.Listener
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -146,50 +147,54 @@ class R2EpubPageFragment : Fragment() {
                     var locations = epubNavigator.pendingLocator?.locations
                     epubNavigator.pendingLocator = null
 
-                    val currentWebView = currentFragment.webView
-
                     // TODO this seems to be needed, will need to test more
-                    if (url!!.indexOf("#") > 0) {
-                        val id = url.substring(url.indexOf('#') + 1)
-                        webView.loadUrl("javascript:readium.scrollToId('$id');")
+                    if (url != null && url.indexOf("#") > 0) {
+                        val id = url.substringAfterLast("#")
                         locations = Locator.Locations(fragments = listOf(id))
-                        recomputeCurrentItem(currentWebView)
                     }
 
-                    if (currentWebView != null && locations != null && locations.fragments.isEmpty()) {
-                        locations["partialCfi"]?.let { partialCfi ->
-                            webView.loadUrl("javascript:readium.scrollToPartialCfi('$partialCfi');")
-                            recomputeCurrentItem(currentWebView)
-                        }
+                    val currentWebView = currentFragment.webView
+                    if (currentWebView != null && locations != null) {
 
-                        locations.progression?.let { progression ->
-                            currentWebView.progression = progression
+                        lifecycleScope.launchWhenStarted {
+                            // FIXME: We need a better way to wait, because if the value is too low it fails
+                            delay(200)
 
-                            if (webView.scrollMode) {
-                                currentWebView.scrollToPosition(progression)
-                            } else {
-                                recomputeCurrentItem(currentWebView)
+                            val htmlId = locations.htmlId
+                            var progression = locations.progression
+                            val partialCfi = locations["partialCfi"]
+
+                            when {
+                                htmlId != null -> currentWebView.scrollToId(htmlId)
+
+                                partialCfi != null -> currentWebView.scrollToPartialCfi(partialCfi as String)
+
+                                progression != null -> {
+                                    // We need to reverse the progression with RTL because the Web View
+                                    // always scrolls from left to right, no matter the reading direction.
+                                    progression =
+                                        if (scrollMode || navigatorFragment.readingProgression == ReadingProgression.LTR) progression
+                                        else 1 - progression
+
+                                    if (webView.scrollMode) {
+                                        currentWebView.scrollToPosition(progression)
+
+                                    } else {
+                                        // Figure out the target web view "page" from the requested
+                                        // progression.
+                                        var item = (progression * currentWebView.numPages).roundToInt()
+                                        if (navigatorFragment.readingProgression == ReadingProgression.RTL && item > 0) {
+                                            item -= 1
+                                        }
+                                        currentWebView.setCurrentItem(item, false)
+                                    }
+                                }
                             }
                         }
                     }
 
                 }
                 webView.listener.onPageLoaded()
-            }
-
-            private fun recomputeCurrentItem(currentWebView: R2WebView?) {
-                if (currentWebView == null) {
-                    return
-                }
-
-                // FIXME: We need a better way to wait, because if the value is too low it fails
-                (object : CountDownTimer(200, 1) {
-                    override fun onTick(millisUntilFinished: Long) {}
-                    override fun onFinish() {
-                        currentWebView.calculateCurrentItem()
-                        currentWebView.setCurrentItem(currentWebView.mCurItem, false)
-                    }
-                }).start()
             }
 
             // prevent favicon.ico to be loaded, this was causing NullPointerException in NanoHttp
@@ -235,12 +240,7 @@ class R2EpubPageFragment : Fragment() {
             false
         }
 
-        val id = (webView.navigator as? EpubNavigatorFragment)?.pendingLocator?.locations?.htmlId
-        if (id != null) {
-            webView.loadUrl("$resourceUrl#$id")
-        } else {
-            resourceUrl?.let { webView.loadUrl(it) }
-        }
+        resourceUrl?.let { webView.loadUrl(it) }
 
         return v
     }
