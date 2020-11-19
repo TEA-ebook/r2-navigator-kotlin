@@ -24,10 +24,7 @@ var readium = (function() {
 
     var maxScreenX = 0;
     var pageWidth = 1;
-
-    var getCfi = debounce(function() {
-        Android.cfiDidChange(getFirstVisiblePartialCfi(getFrameRect()));
-    }, 50);
+    var lastCfi = null;
 
     function orientationChanged() {
         maxScreenX = (window.orientation === 0 || window.orientation == 180) ? screen.width : screen.height;
@@ -220,6 +217,21 @@ var readium = (function() {
         document.scrollingElement.scrollLeft = snapOffset(currentOffset + delta);
     }
 
+    // Generate and returns the first visible element CFI
+    function getCurrentPartialCfi() {
+      try {
+        if ((Date.now() - (readium.lastCfiGeneration || 0)) > 100) {
+          readium.lastCfi = getFirstVisiblePartialCfi(getFrameRect());
+          readium.lastCfiGeneration = Date.now();
+//          Android.log('getCurrentPartialCfi', readium.lastCfi);
+        }
+        return {partialCfi: readium.lastCfi};
+      } catch (error) {
+        Android.logError('Unable to get current partial CFI', 'utils.js', 222);
+        return {partialCfi: null};
+      }
+    }
+
     /// User Settings.
 
     // For setting user setting.
@@ -263,7 +275,8 @@ var readium = (function() {
         'scrollToStart': scrollToStart,
         'scrollToEnd': scrollToEnd,
         'setProperty': setProperty,
-        'removeProperty': removeProperty
+        'removeProperty': removeProperty,
+        'getCurrentPartialCfi': getCurrentPartialCfi
     };
 
 })();

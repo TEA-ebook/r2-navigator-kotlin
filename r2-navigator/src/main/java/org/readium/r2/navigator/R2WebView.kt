@@ -42,15 +42,15 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
 
     private val uiScope = CoroutineScope(Dispatchers.Main)
 
-//    private var targetScrollX = -1
+    private var targetScrollX = -1
 
-//    override fun onScrollChanged(scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int) {
-//        super.onScrollChanged(scrollX, scrollY, oldScrollX, oldScrollY)
-//        if (targetScrollX >= 0 && scrollX != targetScrollX) {
-//            scrollTo(targetScrollX, scrollY)
-//        }
-//        targetScrollX = -1
-//    }
+    override fun onScrollChanged(scrollX: Int, scrollY: Int, oldScrollX: Int, oldScrollY: Int) {
+        super.onScrollChanged(scrollX, scrollY, oldScrollX, oldScrollY)
+        if (targetScrollX >= 0 && scrollX != targetScrollX) {
+            scrollTo(targetScrollX, scrollY)
+        }
+        targetScrollX = -1
+    }
 
     @android.webkit.JavascriptInterface
     override fun scrollRight(animated: Boolean) {
@@ -460,7 +460,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                 val newOffsetPixels = (pageOffset * widthWithMargin).toInt()
 
                 scrollTo(newOffsetPixels, scrollY)
-//                targetScrollX = newOffsetPixels
+                targetScrollX = newOffsetPixels
             }
         } else {
             val ii = infoForPosition(mCurItem)

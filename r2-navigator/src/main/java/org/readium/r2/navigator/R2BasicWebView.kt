@@ -22,9 +22,9 @@ import android.widget.ImageButton
 import android.widget.ListPopupWindow
 import android.widget.PopupWindow
 import android.widget.TextView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import org.json.JSONException
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import org.readium.r2.shared.publication.ReadingProgression
@@ -114,7 +114,10 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
 
     override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
         super.onScrollChanged(l, t, oldl, oldt)
-        listener.onProgressionChanged()
+        getCurrentPartialCfi() {
+            cfi = try { JSONObject(it).getString("partialCfi") } catch(e: JSONException) { null }
+            listener.onProgressionChanged()
+        }
     }
 
     @android.webkit.JavascriptInterface
@@ -165,12 +168,6 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
                 }
             }
         }
-    }
-
-    @android.webkit.JavascriptInterface
-    fun cfiDidChange(partialCfi: String) {
-        cfi = partialCfi
-        listener.onProgressionChanged()
     }
 
     @android.webkit.JavascriptInterface
@@ -305,6 +302,10 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
 
     fun removeProperty(key: String) {
         runJavaScript("removeProperty(\"$key\");")
+    }
+
+    private fun getCurrentPartialCfi(callback: (String) -> Unit) {
+        runJavaScript("readium.getCurrentPartialCfi();", callback);
     }
 
     fun getCurrentSelectionInfo(callback: (String) -> Unit) {
