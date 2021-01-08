@@ -85,10 +85,6 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
     private val MIN_FLING_VELOCITY = 400 // dips
 
 
-    private fun getContentWidth(): Int {
-        return this.computeHorizontalScrollExtent() * numPages
-    }
-
     override fun getContentHeight(): Int {
         return this.computeVerticalScrollRange() //working after load of page
     }
@@ -304,13 +300,15 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
      * It will instead add a portion of the remaining pixels to the value returned, so that columns will not be
      * misaligned.
      */
-    private fun getClientWidth(): Int {
-        return this.computeHorizontalScrollExtent()
-    }
+    private fun getClientWidth(): Int? =
+        computeHorizontalScrollExtent()
+            // The client width is used in divisions, so it's only valid when above 0.
+            .takeIf { it > 0 }
 
     internal fun updateCurrentItem() {
-        if (!scrollMode && !mIsBeingDragged) {
-            mCurItem = scrollX / computeHorizontalScrollExtent()
+        val clientWidth = getClientWidth()
+        if (!scrollMode && !mIsBeingDragged && clientWidth != null) {
+            mCurItem = scrollX / clientWidth
         }
     }
 
@@ -341,7 +339,8 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
     }
 
     private fun scrollToItem(item: Int, smoothScroll: Boolean, velocity: Int, post: Boolean) {
-        val width = this.computeHorizontalScrollExtent()
+        val width = getClientWidth() ?: return
+
         val destX = (width * item)
         if (smoothScroll) {
             smoothScrollTo(destX, 0, velocity)
@@ -378,6 +377,8 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
      * @param velocity the velocity associated with a fling, if applicable. (0 otherwise)
      */
     private fun smoothScrollTo(x: Int, y: Int, velocity: Int) {
+        val width = getClientWidth() ?: return
+
         var v = velocity
         val sx: Int
         val wasScrolling = mScroller != null && !mScroller!!.isFinished
@@ -405,7 +406,6 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
         setScrollingCacheEnabled(true)
         setScrollState(SCROLL_STATE_SETTLING)
 
-        val width = getClientWidth()
         val halfWidth = width / 2
         val distanceRatio = min(1f, 1.0f * abs(dx) / width)
         val distance = halfWidth + halfWidth * distanceInfluenceForSnapDuration(distanceRatio)
@@ -447,11 +447,13 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
     }
 
     private fun recomputeScrollPosition(width: Int, oldWidth: Int, margin: Int, oldMargin: Int) {
+        val clientWidth = getClientWidth() ?: return
+
         if (oldWidth > 0 /*&& !mItems.isEmpty()*/) {
             if (!mScroller!!.isFinished) {
-                val currentPage = (scrollX / getClientWidth().toDouble()).roundToInt()
+                val currentPage = (scrollX / clientWidth.toDouble()).roundToInt()
 
-                mScroller!!.finalX = (currentPage * getClientWidth())
+                mScroller!!.finalX = (currentPage * clientWidth)
             } else {
                 val widthWithMargin = width - paddingLeft - paddingRight + margin
                 val oldWidthWithMargin = oldWidth - paddingLeft - paddingRight + oldMargin
@@ -567,8 +569,9 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
     }
 
     private fun pageScrolled(xpos: Int): Boolean {
+        val width = getClientWidth() ?: return false
+
         val ii = infoForCurrentScrollPosition()
-        val width = getClientWidth()
         val widthWithMargin = width + mPageMargin
         val marginOffset = mPageMargin.toFloat() / width
         val currentPage = ii!!.position
@@ -727,7 +730,6 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                     val x = ev.getX(activePointerIndex)
                     val y = ev.getY(activePointerIndex)
 
-                    val scrollMode = preferences?.getBoolean(SCROLL_REF, false) ?: false
                     if (scrollMode) {
                         val totalDelta = (y - mInitialMotionY).toInt()
                         if (abs(totalDelta) < 200) {
@@ -794,7 +796,8 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
      * This can be synthetic for a missing middle page; the 'object' field can be null.
      */
     private fun infoForCurrentScrollPosition(): ItemInfo? {
-        val width = getClientWidth()
+        val width = getClientWidth() ?: return null
+
         val scrollOffset: Float = if (width > 0) scrollX.toFloat() / width else 0F
         val marginOffset: Float = if (width > 0) mPageMargin.toFloat() / width else 0F
         var lastPos = -1
@@ -815,7 +818,7 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
                 ii = mTempItem
                 ii.offset = lastOffset + lastWidth + marginOffset
                 ii.position = lastPos + 1
-                ii.widthFactor = getClientWidth().toFloat()/*mAdapter.getPageWidth(ii.position)*/
+                ii.widthFactor = width.toFloat()/*mAdapter.getPageWidth(ii.position)*/
                 i--
             }
             offset = ii.offset
@@ -1037,20 +1040,11 @@ class R2WebView(context: Context, attrs: AttributeSet) : R2BasicWebView(context,
         return false
     }
 
-    internal val numPages: Int
-        get() {
-            var numPages = 0
-            try {
-                numPages = (this.computeHorizontalScrollRange() / this.computeHorizontalScrollExtent().toDouble()).roundToInt()
-            } catch (e: Exception) {
-            } finally {
-                if (numPages == 0) {
-                    numPages = 1
-                }
-            }
-            return numPages
-        }
-
+    internal val numPages: Int get() =
+        getClientWidth()
+            ?.let { clientWidth -> (computeHorizontalScrollRange() / clientWidth.toDouble()).roundToInt() }
+            ?.coerceAtLeast(1)
+            ?: 1
 
     /**
      * Layout parameters that should be supplied for views added to a

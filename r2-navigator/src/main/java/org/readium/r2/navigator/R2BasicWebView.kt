@@ -22,9 +22,12 @@ import android.widget.ImageButton
 import android.widget.ListPopupWindow
 import android.widget.PopupWindow
 import android.widget.TextView
-import kotlinx.coroutines.*
 import org.json.JSONException
 import org.json.JSONObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import org.readium.r2.shared.publication.ReadingProgression
@@ -47,8 +50,9 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
     var overrideUrlLoading = true
     var resourceUrl: String? = null
 
-    var scrollMode: Boolean = false
-        private set
+    internal val scrollModeFlow = MutableStateFlow(false)
+
+    val scrollMode: Boolean get() = scrollModeFlow.value
 
     var callback: OnOverScrolledCallback? = null
 
@@ -290,7 +294,7 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
 
     fun setScrollMode(scrollMode: Boolean) {
         runJavaScript("setScrollMode($scrollMode)")
-        this.scrollMode = scrollMode
+        scrollModeFlow.value = scrollMode
     }
 
     fun setProperty(key: String, value: String) {

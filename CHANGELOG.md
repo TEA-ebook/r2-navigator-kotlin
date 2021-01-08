@@ -2,10 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-**Warning:** Features marked as *experimental* may change or be removed in a future release without notice. Use with
-caution.
+**Warning:** Features marked as *experimental* may change or be removed in a future release without notice. Use with caution.
 
 ## [Unreleased]
+
+## [2.0.0-beta.1]
+
+### Added
+
+* Support for [display cutouts](https://developer.android.com/guide/topics/display-cutout) (screen notches).
+    * **IMPORTANT**: You need to remove any `setPadding()` statement from your app in `UserSettings.kt`, if you copied it from the test app.
+    * If you embed a navigator fragment (e.g. `EpubNavigatorFragment`) yourself, you need to opt-in by [specifying the `layoutInDisplayCutoutMode`](https://developer.android.com/guide/topics/display-cutout#choose_how_your_app_handles_cutout_areas) of the host `Activity`.
+    * `R2EpubActivity` and `R2CbzActivity` automatically apply `LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES` to their window's `layoutInDisplayCutoutMode`.
+    * `PdfNavigatorFragment` is not yet compatible with display cutouts, because of limitations from the underlying PDF viewer.
+* Customize EPUB vertical padding by overriding the `r2.navigator.epub.vertical_padding` dimension.
+    * Follow [Android's convention for alternative resources](https://developer.android.com/guide/topics/resources/providing-resources#AlternativeResources) to specify different paddings for landscape (`values-land`) or large screens.
 
 ### Changed
 
@@ -19,6 +30,7 @@ progression. Now if no reading progression is set, the `effectiveReadingProgress
 * [#152](https://github.com/readium/r2-navigator-kotlin/issues/152) Panning through a zoomed-in fixed layout EPUB (contributed by [@johanpoirier](https://github.com/readium/r2-navigator-kotlin/pull/172)).
 * [#146](https://github.com/readium/r2-navigator-kotlin/issues/146) Various reflowable EPUB columns shift issues.
 * Restoring the last EPUB location after configuration changes (e.g. screen rotation).
+* Edge taps to turn pages when the app runs in a multi-windows environment.
 
 >>>>>>> readium/develop
 
@@ -78,4 +90,5 @@ progression. Now if no reading progression is set, the `effectiveReadingProgress
 [unreleased]: https://github.com/readium/r2-navigator-kotlin/compare/master...HEAD
 [2.0.0-alpha.1]: https://github.com/readium/r2-navigator-kotlin/compare/1.1.6...2.0.0-alpha.1
 [2.0.0-alpha.2]: https://github.com/readium/r2-navigator-kotlin/compare/2.0.0-alpha.1...2.0.0-alpha.2
+[2.0.0-beta.1]: https://github.com/readium/r2-navigator-kotlin/compare/2.0.0-alpha.2...2.0.0-beta.1
 

@@ -8,12 +8,10 @@ package org.readium.r2.navigator.image
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.PointF
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentFactory
@@ -66,7 +64,7 @@ class ImageNavigatorFragment private constructor(
                     ImageNavigatorFragment(publication, initialLocator, listener)
 
                 R2CbzPageFragment::class.java.name ->
-                    R2CbzPageFragment(publication, listener)
+                    R2CbzPageFragment(publication)
 
                 else -> super.instantiate(classLoader, className)
             }
@@ -87,8 +85,7 @@ class ImageNavigatorFragment private constructor(
     private lateinit var currentActivity: FragmentActivity
 
     override val currentLocator: StateFlow<Locator> get() = _currentLocator
-    private val _currentLocator = MutableStateFlow(initialLocator
-            ?: publication.readingOrder.first().toLocator())
+    private val _currentLocator = MutableStateFlow(initialLocator ?: publication.readingOrder.first().toLocator())
 
     internal var currentPagerPosition: Int = 0
     internal var resources: List<String> = emptyList()
@@ -148,10 +145,6 @@ class ImageNavigatorFragment private constructor(
         goBackward()
     }
 
-    fun onTap(point: PointF): Boolean {
-        return (this.listener as VisualNavigator.Listener).onTap(point)
-    }
-
     private fun notifyCurrentLocation() {
         val locator = positions[resourcePager.currentItem]
         if (locator == _currentLocator.value) {
@@ -174,7 +167,7 @@ class ImageNavigatorFragment private constructor(
     }
 
     override fun go(link: Link, animated: Boolean, completion: () -> Unit): Boolean =
-        go(link.toLocator(), animated, completion)
+            go(link.toLocator(), animated, completion)
 
     override fun goForward(animated: Boolean, completion: () -> Unit): Boolean {
         val current = resourcePager.currentItem
