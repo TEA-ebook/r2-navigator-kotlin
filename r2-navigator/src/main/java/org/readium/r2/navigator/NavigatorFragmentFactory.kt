@@ -25,8 +25,8 @@ import org.readium.r2.shared.publication.Publication
  */
 @Deprecated("Each [Fragment] has now its own factory, such as `EpubNavigatorFragment.createFactory()`. To use a single [Activity] with several navigator fragments, you can compose the factories with [CompositeFragmentFactory].", level = DeprecationLevel.ERROR)
 class NavigatorFragmentFactory(
-    private val publication: Publication,
-    private val baseUrl: String? = null,
-    private val initialLocator: Locator? = null,
-    private val listener: Navigator.Listener? = null
+  private val publication: Publication,
+  private val baseUrl: String? = null,
+  private val initialLocator: Locator? = null,
+  private val listener: Navigator.Listener? = null
 ) : FragmentFactory()
