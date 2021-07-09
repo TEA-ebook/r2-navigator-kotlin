@@ -9,7 +9,6 @@
 
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 apply plugin: 'com.github.dcendents.android-maven'
 group='com.github.readium'
 
@@ -35,6 +34,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    buildFeatures {
+        viewBinding true
+    }
 }
 
 dependencies {
@@ -59,6 +61,7 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.3.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.0"
+    implementation "androidx.media:media:1.2.0"
     implementation "androidx.recyclerview:recyclerview:1.1.0"
     implementation "androidx.viewpager2:viewpager2:1.0.0"
     implementation "androidx.webkit:webkit:1.4.0"
@@ -68,8 +71,8 @@ dependencies {
     implementation "com.github.chrisbanes:PhotoView:2.3.0"
 
     // ExoPlayer is used by the Audio Navigator.
-    api "com.google.android.exoplayer:exoplayer-core:2.12.0"
-    api "com.google.android.exoplayer:exoplayer-ui:2.12.0"
+    api "com.google.android.exoplayer:exoplayer-core:2.12.2"
+    api "com.google.android.exoplayer:exoplayer-ui:2.12.2"
     api "com.google.android.exoplayer:extension-mediasession:2.12.0"
     api "com.google.android.exoplayer:extension-workmanager:2.12.0"
 

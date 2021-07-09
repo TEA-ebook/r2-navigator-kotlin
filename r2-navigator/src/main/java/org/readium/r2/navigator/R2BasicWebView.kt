@@ -39,6 +39,8 @@ import org.readium.r2.shared.extensions.tryOrNull
 import org.readium.r2.shared.publication.*
 import org.readium.r2.shared.util.Href
 import timber.log.Timber
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 
 /**
@@ -366,16 +368,20 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
         runJavaScript("readium.scrollToEnd();")
     }
 
-    fun scrollToId(htmlId: String) {
-        runJavaScript("readium.scrollToId(\"$htmlId\");")
-    }
+    suspend fun scrollToId(htmlId: String): Boolean =
+        runJavaScriptSuspend("readium.scrollToId(\"$htmlId\");").toBoolean()
 
     fun scrollToPosition(progression: Double) {
         runJavaScript("readium.scrollToPosition(\"$progression\");")
     }
 
     fun scrollToPartialCfi(partialCfi: String) {
-        runJavaScript("readium.scrollToPartialCfi(\"$partialCfi\");")
+      runJavaScript("readium.scrollToPartialCfi(\"$partialCfi\");")
+    }
+
+    suspend fun scrollToText(text: Locator.Text): Boolean {
+        val json = text.toJSON().toString()
+        return runJavaScriptSuspend("readium.scrollToText($json);").toBoolean()
     }
 
     fun setScrollMode(scrollMode: Boolean) {
@@ -435,6 +441,12 @@ open class R2BasicWebView(context: Context, attrs: AttributeSet) : WebView(conte
 
         this.evaluateJavascript(javascript) { result ->
             if (callback != null) callback(result)
+        }
+    }
+
+    private suspend fun runJavaScriptSuspend(javascript: String): String = suspendCoroutine { cont ->
+        runJavaScript(javascript) { result ->
+            cont.resume(result)
         }
     }
 
