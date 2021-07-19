@@ -31,6 +31,7 @@ import org.readium.r2.shared.fetcher.Resource
 import org.readium.r2.shared.publication.*
 import org.readium.r2.shared.publication.services.isRestricted
 import org.readium.r2.shared.publication.services.positionsByReadingOrder
+import org.readium.r2.shared.util.use
 import timber.log.Timber
 
 /**
@@ -40,7 +41,7 @@ import timber.log.Timber
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfNavigatorFragment internal constructor(
-    override val publication: Publication,
+    internal val publication: Publication,
     private val initialLocator: Locator? = null,
     private val listener: Listener? = null
 ) : Fragment(), VisualNavigator {
